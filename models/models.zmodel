@@ -1,0 +1,174 @@
+enum UserStatus {
+    INVITED
+    VERIFIED
+}
+
+enum ReviewStatus {
+    PENDING_REVIEW
+    APPROVED
+    REJECTED
+}
+
+enum BuildStatus {
+    NOT_STARTED
+    IN_PROGRESS
+    COMPLETED
+    FAILED
+}
+
+model User {
+    id               String            @id @default(uuid())
+    name             String?
+    email            String?           @unique
+    pictureUrl       String?           @default('https://i.imgur.com/ZdJSK3Y.jpeg')
+    tokenInvitation  String?
+
+    stripeCustomerId String?
+
+    status           UserStatus        @default(VERIFIED)
+
+    // this is the role of the user for the application
+    globalRole       String            @default('USER')
+    password         String?           @password @omit
+    createdAt        DateTime          @default(now())
+    updatedAt        DateTime          @updatedAt @default(now())
+
+    pwaSubscriptions PwaSubscription[] @relation("user")
+
+    projects         Project[]         @relation("user")
+    investments      Investment[]      @relation("user")
+    wallets          Wallet[]          @relation("user")
+    transactions     Transaction[]     @relation("user")
+
+    @@auth()
+    @@allow("all", auth().id == this.id)
+    @@allow('all', auth().globalRole == 'ADMIN')
+
+    //we only allow that user to register if they don't create an admin role
+    @@allow("create", globalRole != 'ADMIN')
+    @@allow("read", true)
+}
+
+model Project {
+
+    id             String       @id @default(uuid())
+    name           String
+    description    String?
+    category       String?
+    blockchain     String?
+    buildStatus    BuildStatus  @default(NOT_STARTED)
+    reviewStatus   ReviewStatus @default(PENDING_REVIEW)
+    reviewFeedback String?
+    tokenPrice     String?
+    launchDate     String?
+    fundingGoal    String?
+    currentFunding String?
+    whitepaperUrl  String?
+
+    userId         String
+    user           User?        @relation(fields: [userId], references: [id], name: "user")
+
+    teamMembers    TeamMember[] @relation("project")
+    tokenSales     TokenSale[]  @relation("project")
+    investments    Investment[] @relation("project")
+    createdAt      DateTime     @default(now())
+    updatedAt      DateTime     @updatedAt @default(now())
+    @@allow("all", true)
+}
+
+model TeamMember {
+
+    id         String   @id @default(uuid())
+    name       String
+    role       String?
+    bio        String?
+    pictureUrl String?
+
+    projectId  String
+    project    Project? @relation(fields: [projectId], references: [id], name: "project")
+
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt @default(now())
+    @@allow("all", true)
+}
+
+model TokenSale {
+
+    id                  String   @id @default(uuid())
+    totalSupply         String?
+    distributionDetails String?
+    saleStartDate       String?
+    saleEndDate         String?
+    minAllocation       String?
+    maxAllocation       String?
+
+    projectId           String
+    project             Project? @relation(fields: [projectId], references: [id], name: "project")
+
+    createdAt           DateTime @default(now())
+    updatedAt           DateTime @updatedAt @default(now())
+    @@allow("all", true)
+}
+
+model Investment {
+
+    id          String   @id @default(uuid())
+    amount      String?
+    status      String?
+    claimStatus String?
+
+    userId      String
+    user        User?    @relation(fields: [userId], references: [id], name: "user")
+    projectId   String
+    project     Project? @relation(fields: [projectId], references: [id], name: "project")
+
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt @default(now())
+    @@allow("all", true)
+}
+
+model Wallet {
+
+    id        String   @id @default(uuid())
+    address   String
+    network   String?
+    balance   String?
+
+    userId    String
+    user      User?    @relation(fields: [userId], references: [id], name: "user")
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt @default(now())
+    @@allow("all", true)
+}
+
+model Transaction {
+
+    id            String   @id @default(uuid())
+    type          String?
+    amount        String?
+    status        String?
+    walletAddress String?
+    network       String?
+
+    userId        String
+    user          User?    @relation(fields: [userId], references: [id], name: "user")
+
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt @default(now())
+    @@allow("all", true)
+}
+
+model PwaSubscription {
+    id        String   @id @default(uuid())
+    content   String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt @default(now())
+
+    userId    String   @default(auth().id)
+    user      User     @relation(fields: [userId], references: [id], name: 'user')
+
+    @@allow("all", true)
+}
+
+   
